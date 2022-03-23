@@ -1,0 +1,53 @@
+version: '3.1'
+
+services:
+  db:
+    image: mysql:8.0.27
+    container_name: db
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8 --collation-server=utf8_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: shortlink
+      MYSQL_USER: test
+      MYSQL_PASSWORD: testtest
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis
+    container_name: redis
+
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    volumes:
+      - ./static_volume:/home/app/web/staticfiles
+    ports:
+      - 1334:80
+    depends_on:
+      - web
+
+  web:
+    build: ./web_django
+    container_name: web
+    depends_on:
+      - db
+      - redis
+    command: >
+      bash -c "python /code/manage.py makemigrations
+      && python /code/manage.py migrate
+      && python /code/manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./log:/code/log
+      - ./config:/code/config
+
+  clearscript:
+    build: ./clearscript
+    container_name: clearscript
+    command: python /code/clearscript.py
+    volumes:
+      - ./log:/code/log
+      - ./config:/code/config
+    depends_on:
+      - db
+      - redis
